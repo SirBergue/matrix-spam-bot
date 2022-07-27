@@ -57,6 +57,7 @@ function saveConfigFile() : void {
     if (existsSync(DEFAULT_CONFIG_FILE)) {
         // It's safe to assume that the config exists.
         writeFileSync(DEFAULT_CONFIG_FILE, JSON.stringify(config, null, 2));
+        console.log("Saving the config file.")
     }
 }
 
@@ -64,6 +65,18 @@ function saveConfigFile() : void {
 AutojoinRoomsMixin.setupOnClient(client);
 
 verifyConfig();
+
+// Admits that an user entered in the chat.
+client.on("room.event", (roomId, event) => {
+    console.log(event)
+    if (event["sender"] == BOT_NAME) return;
+
+    let userName : string = event["sender"];
+
+    client.sendStateEvent(roomId, "m.room.power_levels", "", {
+        "users": { userName: -1 },      
+    });
+});
 
 client.on("room.message", (roomId, event) => {
     // Avoids that the own message is interpreted.
@@ -80,23 +93,57 @@ client.on("room.message", (roomId, event) => {
             if (message.startsWith("!addmod")) {
                 // Adds an user to the config input.
                 let modName : string | undefined = message.split(" ").pop();
-                if (modName) { config["mods"].push(modName.toString()); }
+                if (modName) { 
+                    config["mods"].push(modName.toString()); 
+
+                    client.sendMessage(roomId, {
+                        "msgtype": "m.room.message",
+                        "body": "Mod: " + modName.toString() + " has been added.",
+                    });
+                }
             } else if (message.startsWith("!removemod")) {
                 // TODO: Add remove mod option.
                 let modName : string | undefined = message.split(" ").pop();
                 if (modName) { 
                     const modNameIndex : number = config["mods"].indexOf(modName, 0);
                     // Guarantees that the mods exists in mod list.
-                    if (modNameIndex !== -1) { config["mods"].splice(modNameIndex, 1); }
+                    if (modNameIndex !== -1) {
+                         config["mods"].splice(modNameIndex, 1);
+                         client.sendMessage(roomId, {
+                            "msgtype": "m.room.message",
+                            "body": "Mod: " + modName.toString() + " has been removed.",
+                        });
+                    }
                 };
+            } else if (message.startsWith("!listmod")) {
+                let mod_list_string = "The mods in my list are:\n\n";
+                for (let modNameIndex  in config["mods"]) { mod_list_string += config["mods"][modNameIndex] + '\n' }
+
+                client.sendMessage(roomId, {
+                    "msgtype": "m.room.message",
+                    "format": "org.matrix.custom.html",
+                    "body": mod_list_string,
+                });
             }
+        }
+        else {
+            client.sendMessage(roomId, {
+                "msgtype": "m.room.message",
+                "body": sender + " you do not have permission to do that.",
+            });
         }
     }
 
 });
 
-try {
-    client.start().then(() => console.log("Client started!"));
-} catch (err) {
+process.on('SIGINT', () => {
+    console.log("Caught interrupt signal");
     saveConfigFile();
-}
+    process.exit()
+});
+
+client.start().then(
+    function() {
+        console.log("Client started!")
+    } 
+);
