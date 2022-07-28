@@ -67,18 +67,28 @@ AutojoinRoomsMixin.setupOnClient(client);
 verifyConfig();
 
 // Admits that an user entered in the chat.
-client.on("room.event", (roomId, event) => {
+client.on("m.room.member", (roomId: string, event: any) => {
+    // Note: this applies to clients invited too.
     console.log(event)
-    if (event["sender"] == BOT_NAME) return;
+    if (event["content"]["membership"] == 'join') {
+        // That guarantees this is a invite.
+        let userName: string = event["sender"];
+        client.setUserPowerLevel(userName, roomId, -1).then(
+            function() {
+                console.log("Here")
+            }
+        )
+    }
+    // if (event["sender"] == BOT_NAME) return;
 
-    let userName : string = event["sender"];
+    // let userName : string = event["sender"];
 
-    client.sendStateEvent(roomId, "m.room.power_levels", "", {
-        "users": { userName: -1 },      
-    });
+    // client.sendStateEvent(roomId, "m.room.power_levels", "", {
+    //     "users": { userName: -1 },      
+    // });
 });
 
-client.on("room.message", (roomId, event) => {
+client.on("room.message", (roomId: string, event: any) => {
     // Avoids that the own message is interpreted.
     if (event["sender"] == BOT_NAME) return;
     if (!event["content"]) return;
