@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    
-    /* Modules */
     "module": "commonjs",
+    "outDir": "dist",
 
     /* Interop Constraints */
     "esModuleInterop": true,
@@ -13,9 +12,11 @@
     "strict": true,
 
     /* Completeness */
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noImplicitAny": true,
   },
   "include": [
     "./src/**/*",
-  ]
+  ],
+  "exclude": ["node_modules"],
 }
