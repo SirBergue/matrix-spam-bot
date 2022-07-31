@@ -6,6 +6,8 @@ import {
   ConfigHandler
 } from './config/handler'
 
+import { ModPermission } from './functions/mod'
+
 import {
   MatrixClient,
   AutojoinRoomsMixin,
@@ -26,6 +28,8 @@ const configHandler = new ConfigHandler(
   userConfigs.DEFAULT_CONFIG_FILE,
   userConfigs.INITIAL_MOD
 )
+
+const modPermission = new ModPermission()
 
 configHandler.verifyConfig()
 
@@ -65,43 +69,11 @@ client.on('room.message', (roomId: string, event: any) => {
       // The issuer is a mod guarantee.
 
       if (message.startsWith('!addmod')) {
-        // Adds an user to the config input.
-        const modName : string | undefined = message.split(' ').pop()
-        if (modName) {
-          configHandler.config.mods.push(modName.toString())
-
-          client.sendMessage(roomId, {
-            msgtype: 'm.room.message',
-            body: 'Mod: ' + modName.toString() + ' has been added.'
-          })
-        }
+        modPermission.addMod(message, configHandler, roomId, client)
       } else if (message.startsWith('!removemod')) {
-        // TODO: Add remove mod option.
-        const modName : string | undefined = message.split(' ').pop()
-        if (modName) {
-          const modNameIndex : number = configHandler.config.mods.indexOf(modName, 0)
-
-          // Guarantees that the mods exists in mod list.
-          if (modNameIndex !== -1) {
-            configHandler.config.mods.splice(modNameIndex, 1)
-
-            client.sendMessage(roomId, {
-              msgtype: 'm.room.message',
-              body: 'Mod: ' + modName.toString() + ' has been removed.'
-            })
-          }
-        }
+        modPermission.removeMod(message, configHandler, roomId, client)
       } else if (message.startsWith('!listmod')) {
-        let modListString = 'The mods in my list are:\n\n'
-        for (const modNameIndex in configHandler.config.mods) {
-          modListString += configHandler.config.mods[modNameIndex] + '\n'
-        }
-
-        client.sendMessage(roomId, {
-          msgtype: 'm.room.message',
-          format: 'org.matrix.custom.html',
-          body: modListString
-        })
+        modPermission.listMod(configHandler, client, roomId)
       }
     } else {
       client.sendMessage(roomId, {
