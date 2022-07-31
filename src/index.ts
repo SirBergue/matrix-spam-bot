@@ -1,70 +1,33 @@
 /* Matrix bot to prevent spam passively by following some principles. */
 
+import * as userConfigs from "./config/userConfigs";
+
+import {
+    ConfigHandler
+} from "./config/handler";
+
 import {
     MatrixClient,
     AutojoinRoomsMixin,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-
-const SERVER_NAME : string       = "https://server.name";
-const ACCESS_TOKEN : string      = "ENTER_BOT_ACCESS_KEY";
-const BOT_NAME : string          = "@BOT_NAME:server.name";
-const INITIAL_MOD : string       = "@YOUR_NAME:your_server.name";
-
-const COMMAND_CHARACTER : string   = "!";
-const DEFAULT_CONFIG_FILE : string = "./bot_config.json";
-
 const storage : SimpleFsStorageProvider = new SimpleFsStorageProvider("bot.json");
 const client : MatrixClient = new MatrixClient(
-    SERVER_NAME,
-    ACCESS_TOKEN,
+    userConfigs.SERVER_NAME,
+    userConfigs.ACCESS_TOKEN,
     storage
 );
-
-var config : { [mods: string] : string[] };
-
-function verifyConfig() : void {
-    let shouldCreateConfig : boolean = false;
-
-    if (existsSync(DEFAULT_CONFIG_FILE)) {
-        const data : Buffer = readFileSync(DEFAULT_CONFIG_FILE);
-        if (data) {
-            config = JSON.parse(data.toString());
-            console.log("Succesfuly loaded config from disk.")
-        } else { shouldCreateConfig = true; }
-
-    } else { shouldCreateConfig = true }
-
-    // In case the file does not exists.
-    if (shouldCreateConfig) {
-        config = {
-            mods: [INITIAL_MOD],
-        }
-
-        writeFileSync(
-            DEFAULT_CONFIG_FILE, 
-            JSON.stringify(config, null, 2),
-            'utf8'
-        );
-
-        console.log("Succesfuly created config file.");
-    }
-}
-
-function saveConfigFile() : void {
-    if (existsSync(DEFAULT_CONFIG_FILE)) {
-        // It's safe to assume that the config exists.
-        writeFileSync(DEFAULT_CONFIG_FILE, JSON.stringify(config, null, 2));
-        console.log("Saving the config file.")
-    }
-}
 
 // By default, it join rooms automatically.
 AutojoinRoomsMixin.setupOnClient(client);
 
-verifyConfig();
+let configHandler = new ConfigHandler(
+    userConfigs.DEFAULT_CONFIG_FILE,
+    userConfigs.INITIAL_MOD
+);
+
+configHandler.verifyConfig();
 
 // Admits that an user entered in the chat.
 client.on("m.room.member", (roomId: string, event: any) => {
@@ -90,21 +53,21 @@ client.on("m.room.member", (roomId: string, event: any) => {
 
 client.on("room.message", (roomId: string, event: any) => {
     // Avoids that the own message is interpreted.
-    if (event["sender"] == BOT_NAME) return;
+    if (event["sender"] == userConfigs.BOT_NAME) return;
     if (!event["content"]) return;
 
     let message : string = event["content"]["body"];
     let sender  : string = event["sender"];
 
-    if (message.startsWith(COMMAND_CHARACTER)) {
-        if (config["mods"].includes(sender)) {
+    if (message.startsWith(userConfigs.COMMAND_CHARACTER)) {
+        if (configHandler.config["mods"].includes(sender)) {
             // The issuer is a mod guarantee.
             
             if (message.startsWith("!addmod")) {
                 // Adds an user to the config input.
                 let modName : string | undefined = message.split(" ").pop();
                 if (modName) { 
-                    config["mods"].push(modName.toString()); 
+                    configHandler.config["mods"].push(modName.toString()); 
 
                     client.sendMessage(roomId, {
                         "msgtype": "m.room.message",
@@ -115,10 +78,10 @@ client.on("room.message", (roomId: string, event: any) => {
                 // TODO: Add remove mod option.
                 let modName : string | undefined = message.split(" ").pop();
                 if (modName) { 
-                    const modNameIndex : number = config["mods"].indexOf(modName, 0);
+                    const modNameIndex : number = configHandler.config["mods"].indexOf(modName, 0);
                     // Guarantees that the mods exists in mod list.
                     if (modNameIndex !== -1) {
-                         config["mods"].splice(modNameIndex, 1);
+                        configHandler.config["mods"].splice(modNameIndex, 1);
                          client.sendMessage(roomId, {
                             "msgtype": "m.room.message",
                             "body": "Mod: " + modName.toString() + " has been removed.",
@@ -127,7 +90,9 @@ client.on("room.message", (roomId: string, event: any) => {
                 };
             } else if (message.startsWith("!listmod")) {
                 let mod_list_string = "The mods in my list are:\n\n";
-                for (let modNameIndex  in config["mods"]) { mod_list_string += config["mods"][modNameIndex] + '\n' }
+                for (let modNameIndex in configHandler.config["mods"]) { 
+                    mod_list_string += configHandler.config["mods"][modNameIndex] + '\n';
+                }
 
                 client.sendMessage(roomId, {
                     "msgtype": "m.room.message",
@@ -148,7 +113,8 @@ client.on("room.message", (roomId: string, event: any) => {
 
 process.on('SIGINT', () => {
     console.log("Caught interrupt signal");
-    saveConfigFile();
+    configHandler.saveConfigFile();
+
     process.exit()
 });
 
