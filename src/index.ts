@@ -1,35 +1,54 @@
 /* Matrix bot to prevent spam passively by following some principles. */
 
-import * as userConfigs from './config/userConfigs'
-
-import {
-  ConfigHandler
-} from './config/handler'
-
+import { UserConfig } from './config/user'
+import { ConfigHandler } from './config/handler'
 import { ModPermission } from './functions/mod'
 
+import { Command } from 'commander'
 import {
   MatrixClient,
   AutojoinRoomsMixin,
   SimpleFsStorageProvider
 } from 'matrix-bot-sdk'
 
+const programParser = new Command()
+
+programParser
+  .name('matrix-spam-bot')
+  .description('Prevents spam by following some principles')
+  .version('0.1.0')
+
+programParser
+  .requiredOption('-sv, --server-name <value>', 'Defines the matrix server in which the bot will work on.')
+  .requiredOption('-act, --access-token <value>', 'Defines the Bot access-token to the server.')
+  .requiredOption('-bn, --bot-name <value>', 'Defines the matrix name, use as: [@mybot:matrix.org].')
+  .option('-im, --initial-mod <value>', 'Specifies the first mod to be added to the config, if the configuration file does not exists.')
+
+programParser.parse(process.argv)
+
+const parseOptions = programParser.opts()
+const userConfig = new UserConfig(
+  parseOptions.serverName,
+  parseOptions.accessToken,
+  parseOptions.botName,
+  parseOptions.initialMod
+)
+
 const storage : SimpleFsStorageProvider = new SimpleFsStorageProvider('bot.json')
 const client : MatrixClient = new MatrixClient(
-  userConfigs.SERVER_NAME,
-  userConfigs.ACCESS_TOKEN,
+  userConfig.SERVER_NAME,
+  userConfig.ACCESS_TOKEN,
   storage
 )
 
+const configHandler = new ConfigHandler(
+  userConfig.DEFAULT_CONFIG_FILE,
+  userConfig.INITIAL_MOD
+)
+const modPermission = new ModPermission()
+
 // By default, it join rooms automatically.
 AutojoinRoomsMixin.setupOnClient(client)
-
-const configHandler = new ConfigHandler(
-  userConfigs.DEFAULT_CONFIG_FILE,
-  userConfigs.INITIAL_MOD
-)
-
-const modPermission = new ModPermission()
 
 configHandler.verifyConfig()
 
@@ -58,13 +77,13 @@ client.on('m.room.member', (roomId: string, event: any) => {
 
 client.on('room.message', (roomId: string, event: any) => {
   // Avoids that the own message is interpreted.
-  if (event.sender === userConfigs.BOT_NAME) return
+  if (event.sender === userConfig.BOT_NAME) return
   if (!event.content) return
 
   const message : string = event.content.body
   const sender : string = event.sender
 
-  if (message.startsWith(userConfigs.COMMAND_CHARACTER)) {
+  if (message.startsWith(userConfig.COMMAND_CHARACTER)) {
     if (configHandler.config.mods.includes(sender)) {
       // The issuer is a mod guarantee.
 
