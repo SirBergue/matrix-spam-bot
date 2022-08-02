@@ -1,5 +1,6 @@
 /* Matrix bot to prevent spam passively by following some principles. */
 
+import { ModRoom } from './types'
 import { UserConfig } from './config/user'
 import { ConfigHandler } from './config/handler'
 import { ModPermission } from './functions/mod'
@@ -22,7 +23,7 @@ programParser
   .requiredOption('-sv, --server-name <value>', 'Defines the matrix server in which the bot will work on.')
   .requiredOption('-act, --access-token <value>', 'Defines the Bot access-token to the server.')
   .requiredOption('-bn, --bot-name <value>', 'Defines the matrix name, use as: [@mybot:matrix.org].')
-  .option('-im, --initial-mod <value>', 'Specifies the first mod to be added to the config, if the configuration file does not exists.')
+  .option('-mm, --master-mod <value>', 'Specifies the master mod to be added to the config.')
 
 programParser.parse(process.argv)
 
@@ -43,7 +44,7 @@ const client : MatrixClient = new MatrixClient(
 
 const configHandler = new ConfigHandler(
   userConfig.DEFAULT_CONFIG_FILE,
-  userConfig.INITIAL_MOD
+  userConfig.MASTER_MOD
 )
 const modPermission = new ModPermission()
 
@@ -66,13 +67,6 @@ client.on('m.room.member', (roomId: string, event: any) => {
       }
     )
   }
-  // if (event['sender'] == BOT_NAME) return
-
-  // let userName : string = event['sender']
-
-  // client.sendStateEvent(roomId, 'm.room.power_levels', '', {
-  //     'users': { userName: -1 },
-  // })
 })
 
 client.on('room.message', (roomId: string, event: any) => {
@@ -84,9 +78,12 @@ client.on('room.message', (roomId: string, event: any) => {
   const sender : string = event.sender
 
   if (message.startsWith(userConfig.COMMAND_CHARACTER)) {
-    if (configHandler.config.mods.includes(sender)) {
-      // The issuer is a mod guarantee.
+    // Find the correspondent config room
+    const roomIndex : number = configHandler.returnSpecificRoom(roomId)
+    const room : ModRoom = configHandler.config.modRoom[roomIndex]
 
+    if ((roomIndex && room.mods.includes(sender)) || configHandler.config.masterMod === sender) {
+      // The issuer is a mod guarantee.
       if (message.startsWith('!addmod')) {
         modPermission.addMod(message, configHandler, roomId, client)
       } else if (message.startsWith('!removemod')) {

@@ -1,49 +1,70 @@
 /* Handles the configuration-state by using json. */
 
+import { Config } from '../types'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
 export class ConfigHandler {
-  configuration_path : string
-  initial_mod : string
+  // The config is set per room.
+  configurationPath : string
+  config : Config
 
-  config : { [mods: string] : string[] }
+  constructor (configurationPath: string, masterMod: string) {
+    this.configurationPath = configurationPath
 
-  constructor (configurationPath: string, initialMod: string) {
-    this.configuration_path = configurationPath
-    this.initial_mod = initialMod
-    this.config = {}
+    this.config = {} as Config
+    this.config.masterMod = masterMod
   }
 
   verifyConfig () : void {
     let shouldCreateConfig : boolean = false
 
-    if (existsSync(this.configuration_path)) {
-      const data : Buffer = readFileSync(this.configuration_path)
+    if (existsSync(this.configurationPath)) {
+      const data : Buffer = readFileSync(this.configurationPath)
       if (data) {
-        this.config = JSON.parse(data.toString())
-        console.log('Succesfuly loaded config from disk.')
+        const preConfig : Config = JSON.parse(data.toString())
+
+        // Prioritizes the specified parameter value than the saved file value.
+        if (this.config.masterMod) {
+          if (preConfig.masterMod !== this.config.masterMod) {
+            preConfig.masterMod = this.config.masterMod
+          }
+        }
+
+        this.config = preConfig
+        console.log('Successfuly loaded config from disk.')
       } else { shouldCreateConfig = true }
     } else { shouldCreateConfig = true }
 
-    // In case the file does not exists.
+    // In case the file does not exists or is invalid.
     if (shouldCreateConfig) {
-      this.config = { mods: [this.initial_mod] }
-
       writeFileSync(
-        this.configuration_path,
+        this.configurationPath,
         JSON.stringify(this.config, null, 2),
         'utf8'
       )
 
-      console.log('Succesfuly created config file.')
+      console.log('Successfuly created config file.')
     }
   }
 
   saveConfigFile () : void {
-    if (existsSync(this.configuration_path)) {
+    if (existsSync(this.configurationPath)) {
       // It's safe to assume that the config exists.
-      writeFileSync(this.configuration_path, JSON.stringify(this.config, null, 2))
+      writeFileSync(this.configurationPath, JSON.stringify(this.config, null, 2))
       console.log('Saving the config file.')
     }
+  }
+
+  returnSpecificRoom (roomId : string) : number {
+    let i = 0
+
+    for (const room in this.config.modRoom) {
+      if (this.config.modRoom[room].id === roomId) {
+        return i
+      }
+      i += 1
+    }
+
+    return -1
   }
 }
