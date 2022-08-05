@@ -1,6 +1,7 @@
 /* Matrix bot to prevent spam passively by following some principles. */
 
 import { ModRoom } from './types'
+
 import { UserConfig } from './config/user'
 import { ConfigHandler } from './config/handler'
 import { ModPermission } from './functions/mod'

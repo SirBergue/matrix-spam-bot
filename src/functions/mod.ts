@@ -26,7 +26,8 @@ export class ModPermission {
       if (!doesRoomExists) {
         const newRoom : ModRoom = {
           id: roomId,
-          mods: [configHandler.config.masterMod, modName]
+          mods: [configHandler.config.masterMod, modName],
+          users: []
         }
 
         configHandler.config.modRoom.push(newRoom)
