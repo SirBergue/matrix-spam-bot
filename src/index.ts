@@ -1,6 +1,6 @@
 /* Matrix bot to prevent spam passively by following some principles. */
 
-import { ModRoom } from './types'
+import { ModRoom, UserRoom } from './types'
 
 import { UserConfig } from './config/user'
 import { ConfigHandler } from './config/handler'
@@ -67,6 +67,14 @@ client.on('m.room.member', (roomId: string, event: any) => {
         console.log('Here')
       }
     )
+
+    const specificRoomId : number = configHandler.returnSpecificRoom(roomId)
+    const user : UserRoom = {} as UserRoom
+
+    user.name = userName
+    user.entryTime = Date.now()
+
+    configHandler.config.modRoom[specificRoomId].users.push(user)
   }
 })
 
