@@ -33,7 +33,7 @@ const userConfig = new UserConfig(
   parseOptions.serverName,
   parseOptions.accessToken,
   parseOptions.botName,
-  parseOptions.initialMod
+  parseOptions.masterMod
 )
 
 const storage : SimpleFsStorageProvider = new SimpleFsStorageProvider('bot.json')
@@ -89,7 +89,20 @@ client.on('room.message', (roomId: string, event: any) => {
   if (message.startsWith(userConfig.COMMAND_CHARACTER)) {
     // Find the correspondent config room
     const roomIndex : number = configHandler.returnSpecificRoom(roomId)
-    const room : ModRoom = configHandler.config.modRoom[roomIndex]
+    let room : ModRoom = {} as ModRoom
+
+    if (roomIndex === -1) {
+      // In this case the room does not exists
+      room = {
+        id: roomId,
+        mods: [configHandler.config.masterMod],
+        users: []
+      }
+
+      configHandler.config.modRoom.push(room)
+    } else {
+      room = configHandler.config.modRoom[roomIndex]
+    }
 
     if ((roomIndex && room.mods.includes(sender)) || configHandler.config.masterMod === sender) {
       // The issuer is a mod guarantee.

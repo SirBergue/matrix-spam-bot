@@ -10,9 +10,7 @@ export class ConfigHandler {
 
   constructor (configurationPath: string, masterMod: string) {
     this.configurationPath = configurationPath
-
-    this.config = {} as Config
-    this.config.masterMod = masterMod
+    this.config = { modRoom: [], masterMod }
   }
 
   verifyConfig () : void {
