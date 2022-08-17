@@ -13,6 +13,18 @@ import {
   SimpleFsStorageProvider
 } from 'matrix-bot-sdk'
 
+import winston from 'winston'
+
+const logger : winston.Logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'execution.log' })
+  ]
+})
+
 const programParser = new Command()
 
 programParser
@@ -64,7 +76,7 @@ client.on('m.room.member', (roomId: string, event: any) => {
 
     client.setUserPowerLevel(userName, roomId, -1).then(
       function () {
-        console.log('Here')
+        logger.info('The user power level was set')
       }
     )
 
@@ -100,6 +112,7 @@ client.on('room.message', (roomId: string, event: any) => {
       }
 
       configHandler.config.modRoom.push(room)
+      logger.warn('The room with id ' + roomId.toString() + ' was not found. Creating new one.')
     } else {
       room = configHandler.config.modRoom[roomIndex]
     }
